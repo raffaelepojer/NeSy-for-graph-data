@@ -1,0 +1,22 @@
+@predict_hom(i) = COMBINE CAT(i) = CAT(j)
+        WITH mean
+        FORALL j
+        WHERE (edge(i,j)|edge(j,i));
+
+@diff(i) = ((-1*@predict_hom(i)) + hom(i));
+
+@lowerbound(i) = COMBINE 
+	(4.39 * @diff(i)),
+	2.2
+	WITH l-reg
+	FORALL;
+	
+@upperbound(i) = COMBINE 
+	(-4.39* @diff(i)),
+	2.2
+	WITH l-reg
+	FORALL;
+
+const(i) = WIF (@upperbound(i) * @lowerbound(i))
+        THEN 1
+        ELSE 0;

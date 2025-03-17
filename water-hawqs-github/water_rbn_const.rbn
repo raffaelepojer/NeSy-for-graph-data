@@ -1,0 +1,53 @@
+@profit_land([hru_agr]l) =  COMBINE 
+								WIF LandUse(l)=CORN THEN (5.0*AreaAgr(l)) ELSE 0.0,
+								WIF LandUse(l)=COSY THEN (2.0*AreaAgr(l)) ELSE 0.0,
+								WIF LandUse(l)=PAST THEN (1.0*AreaAgr(l)) ELSE 0.0,
+								WIF LandUse(l)=SOYB THEN (4.0*AreaAgr(l)) ELSE 0.0
+							WITH sum
+							FORALL
+							WHERE true;
+
+@profit_sub([sub]s) =   COMBINE 
+							@profit_land(l)
+						WITH sum
+						FORALL l
+						WHERE hru_agr_to_sub(l,s);
+
+@profit_from_all() = 	COMBINE 
+							@profit_sub(s)
+						WITH sum
+						FORALL s
+						WHERE sub(s);
+
+@low_count() = COMBINE Pollution(w)=LOW
+	WITH sum
+	FORALL w
+	WHERE sub(w);
+
+%%% TOTAL AGR HRU AREA: 57.84709667374227
+%%% TOTAL URB HRU AREA: 25.10410791556933
+
+@max_profit_sub([sub]s) =   COMBINE (5.0*AreaAgr(l))
+							WITH sum
+							FORALL l
+							WHERE hru_agr_to_sub(l,s);
+
+
+@min_profit_sub([sub]s) =   COMBINE (1.0*AreaAgr(l))
+							WITH sum
+							FORALL l
+							WHERE hru_agr_to_sub(l,s);
+
+@inv_maxmin_sub([sub]s) =   COMBINE 
+								(-1*@min_profit_sub(s)),
+								@max_profit_sub(s)
+							WITH invsum
+							FORALL 
+							WHERE true;
+
+@target_s([sub]s) =  ((@profit_sub(s) + (-1*@min_profit_sub(s))) * @inv_maxmin_sub(s));
+
+all_const([sub]s) = WIF 1
+					THEN Pollution(s)=LOW
+					ELSE @target_s(s);
+
