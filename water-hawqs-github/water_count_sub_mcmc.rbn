@@ -1,7 +1,0 @@
-@low_count() = COMBINE Pollution(w)=LOW
-	WITH sum
-	FORALL w
-	WHERE sub(w);
-
-%%% 1/23.2
-constr() = (@low_count() * 0.04310344828);
