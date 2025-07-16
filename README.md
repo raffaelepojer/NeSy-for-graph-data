@@ -13,6 +13,11 @@ Code for the paper: *"A Neuro-Symbolic Approach for Probabilistic Reasoning on G
 - Contains experiments with the Ising model, including dataset generation, model training, and data export for Primula.
 - Includes additional experiments using the GMNN model.
 
+### `GNN-RBN-compile/`
+- Slight adaptation from the experiments of "Generalized Reasoning with Graph Neural Networks by Relational Bayesian Network Encodings"
+- Add ACR-GNN compilation support for categorical variables and for parameter learning in Primula
+- `.rbn` file for the PyTorch-GNN interface 
+
 ### Notebooks
 - Both main directories include Python notebooks for data exploration and preprocessing.
 

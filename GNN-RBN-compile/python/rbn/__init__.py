@@ -1,0 +1,1 @@
+from .gnn_to_rbn import write_rbn_ACR_graph

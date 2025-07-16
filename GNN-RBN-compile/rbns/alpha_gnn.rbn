@@ -1,0 +1,15 @@
+color([node]v) = SOFTMAX 1,1,1,1,1;
+
+alpha1([node]v) =
+
+                COMPUTEWITHTORCH [/PATH/TO/GNN-RBN-compile/config_model.py]
+
+                WithNumValues 1
+                ForFreeVars (v)
+
+                ATTR:
+                    X: color
+                    EDGE: edge
+
+                COMBINE color(c) USINGTORCH FORALL c WHERE node(c);
+  
