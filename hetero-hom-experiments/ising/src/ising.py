@@ -185,7 +185,11 @@ def create_splits(num_nodes, N, train_ratio=0.48, val_ratio=0.32):
         'test_mask': test_mask
     }
 
-    with open(f'PATH/ising/masks/mask.pkl', 'wb') as f:
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    base_path = os.path.join(base_path, '..')
+    mask_path = os.path.join(base_path, 'masks', 'mask.pkl')
+    plots_path = os.path.join(base_path, 'plots')
+    with open(mask_path, 'wb') as f:
         pickle.dump(masks, f)
     
     train_nodes = np.arange(0, num_nodes, 1)[train_mask]
@@ -200,8 +204,8 @@ def create_splits(num_nodes, N, train_ratio=0.48, val_ratio=0.32):
     plt.imshow(ising, cmap='binary', interpolation='none')
     plt.axis('tight')
     plt.axis('off')
-    plt.show()
-    
+    plt.savefig(f'{plots_path}/train_val_mask.png', bbox_inches='tight', pad_inches = 0)
+
     return train_mask, val_mask, test_mask
     
 def graph_to_data(G):
@@ -209,7 +213,10 @@ def graph_to_data(G):
     data.x = torch.tensor([[node[1]['x']] for node in G.nodes(data=True)], dtype=torch.float)
     data.y = torch.tensor([node[1]['y'] if node[1]['y']==1 else 0 for node in G.nodes(data=True)], dtype=torch.long)
 
-    mask_path = 'PATH/ising/masks/mask.pkl'
+    # PATH - FILE mask.pkl !
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    base_path = os.path.join(base_path, '..')
+    mask_path = os.path.join(base_path, 'masks', 'mask.pkl')
     if os.path.exists(mask_path):
         with open(mask_path, 'rb') as f:
             masks = pickle.load(f)

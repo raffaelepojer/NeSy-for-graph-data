@@ -9,11 +9,14 @@ from torch_geometric.utils import from_networkx
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
 from plotting import *
+import os
+import pickle
 
 #############################################################################################
 ## This file generate the graph given the HAWQS data and save them as pickle for later use ##
 #############################################################################################
 
+# node attributes for the subbasin nodes
 def read_subb_feat(file_path, G, subbasin_data):
     def convert_float(value):
         try:
@@ -46,6 +49,7 @@ def read_subb_feat(file_path, G, subbasin_data):
         df = pd.DataFrame(subbasins_feature)
     return df
 
+# node attributes for the HRU nodes
 def add_hru_nodes(file_path, G):
     info_file = file_path + "/TxtInOut/input.std"
 
@@ -131,6 +135,7 @@ def add_hru_nodes(file_path, G):
         df = pd.DataFrame(hrus_fetatures)
     return G, df
 
+# generate the graph structure of the watershed according to the specifications
 def create_watershed_graph(file_path):
     def trace_source(storage):
         if storage in add_operations:
@@ -224,9 +229,11 @@ def get_yearly_avg(df, parameters):
     df_yearly_avg = df.groupby(['Year', 'RCH'])[parameters].mean().reset_index()
     return df_yearly_avg
 
+
 def create_hetero_data_y_m(year, month, G, y_cat, sub_data, hru_data, reach_data, parameter, set_luse, set_other, scenario=None):
     # convert the data to a heterogenous graph
-
+    # in this case many features for the nodes are not included for simplicity
+    
     # Convert dataframe string to one-hot encoding
     # it also fix the columns index
     numeric_df_hru_agr = hru_data.copy()
@@ -242,14 +249,14 @@ def create_hetero_data_y_m(year, month, G, y_cat, sub_data, hru_data, reach_data
     bo_agr = numeric_df_hru_agr.pop(17)
     luse_non_agr = numeric_df_hru_non_arg.pop(9)
     soil_non_agr = numeric_df_hru_non_arg.pop(10)
-    bo_non_agr = numeric_df_hru_non_arg.pop(17)
+    others_non_agr = numeric_df_hru_non_arg.pop(17)
     # insert the values in the first columns with the same column name
     numeric_df_hru_agr.insert(1, 9, luse_agr)
     numeric_df_hru_agr.insert(2, 10, soil_agr)
     numeric_df_hru_agr.insert(3, 17, bo_agr)
     numeric_df_hru_non_arg.insert(1, 9, luse_non_agr)
     numeric_df_hru_non_arg.insert(2, 10, soil_non_agr)
-    numeric_df_hru_non_arg.insert(3, 17, bo_non_agr)
+    numeric_df_hru_non_arg.insert(3, 17, others_non_agr)
     # reset the columns index
     numeric_df_hru_agr.columns = range(numeric_df_hru_agr.columns.size)
     numeric_df_hru_non_arg.columns = range(numeric_df_hru_non_arg.columns.size)
@@ -317,10 +324,10 @@ def create_hetero_data_y_m(year, month, G, y_cat, sub_data, hru_data, reach_data
     hru_edges = G.edges(list(range(24, G.number_of_nodes()+1)))
     
     data['sub'].x = torch.tensor(numeric_df_sub.to_numpy(dtype=float), dtype=torch.float)
-    data['hru_agr'].x = torch.tensor(numeric_df_hru_agr.to_numpy(dtype=float), dtype=torch.float)
-    data['hru_urb'].x = torch.tensor(numeric_df_hru_non_arg.to_numpy(dtype=float), dtype=torch.float)
+    data['agr'].x = torch.tensor(numeric_df_hru_agr.to_numpy(dtype=float), dtype=torch.float)
+    data['urb'].x = torch.tensor(numeric_df_hru_non_arg.to_numpy(dtype=float), dtype=torch.float)
 
-    data['sub', 'to', 'sub'].edge_index = torch.tensor(
+    data['sub', 'downstream', 'sub'].edge_index = torch.tensor(
         np.array([(edge[0]-1, edge[1]-1) for edge in sub_edges]).T, dtype=torch.long)
 
     hru_agr_edges = []
@@ -340,11 +347,11 @@ def create_hetero_data_y_m(year, month, G, y_cat, sub_data, hru_data, reach_data
     hru_non_arg_edges = torch.tensor(
         np.array([(hru_number_non_arg_dict[edge[0]], edge[1]-1) for edge in hru_non_arg_edges]).T, dtype=torch.long)
 
-    data['hru_agr', 'to', 'sub'].edge_index = hru_agr_edges
-    data['hru_urb', 'to', 'sub'].edge_index = hru_non_arg_edges
+    data['agr', 'downstream_agr', 'sub'].edge_index = hru_agr_edges
+    data['urb', 'downstream_urb', 'sub'].edge_index = hru_non_arg_edges
 
-    data['sub', 'to', 'hru_agr'].edge_index = torch.empty((2, 0), dtype=torch.long)
-    data['sub', 'to', 'hru_urb'].edge_index = torch.empty((2, 0), dtype=torch.long)
+    data['sub', 'upstream_agr', 'agr'].edge_index = torch.empty((2, 0), dtype=torch.long)
+    data['sub', 'upstream_urb', 'urb'].edge_index = torch.empty((2, 0), dtype=torch.long)
     
     # Assign target labels. When month is provided, we use both year and month.
     # If year is None, we compute the average over all years.
@@ -524,22 +531,37 @@ def from_swat_to_torch(base_path: str,
     return train_graphs, val_graphs, test_graphs
 
 
-if __name__ == '__main__':
-    base_path = "../scenarios/"
-    scenarios = ["default-2", "soy-3", "corn-3", "pasture-3", 'cosy-3', "pasture-corn", "soy-corn-2", "cosy-corn-2", "pasture-soy-2", "pasture-cosy-2", "cosy-soy-2", "default-mix", "default-mix-2", "default-mix-3"]
+def main():     
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+
+    base_path = os.path.join(current_dir, "..", "scenarios") + os.sep
+    # scenarios = ["default-2", "soy-3", "corn-3", "pasture-3", 'cosy-3', "pasture-corn", "soy-corn-2", "cosy-corn-2", "pasture-soy-2", "pasture-cosy-2", "cosy-soy-2", "default-mix", "default-mix-2", "default-mix-3"]
+    scenarios = ["default-2"]
     agr_types = ['CORN', 'COSY', 'PAST', 'SOYB']
 
     all_years = True
-    train_graphs, val_graphs, test_graphs = from_swat_to_torch(base_path=base_path, scenarios=scenarios, num_bins=3, agr_types=agr_types, y_param='TOT_N_CONC', all_years=all_years)
+    train_graphs, val_graphs, test_graphs = from_swat_to_torch(
+        base_path=base_path,
+        scenarios=scenarios,
+        num_bins=3,
+        agr_types=agr_types,
+        y_param='TOT_N_CONC',
+        all_years=all_years
+    )
 
-    plot_all_graphs(scenarios, (train_graphs+val_graphs+test_graphs), 3, all_years=all_years)
-    import pickle
-    with open('../data/train_graphs_all.pkl', 'wb') as f:
+    plot_all_graphs(scenarios, (train_graphs + val_graphs + test_graphs), 3, all_years=all_years)
+
+    data_dir = os.path.join(current_dir, "..", "data")
+    os.makedirs(data_dir, exist_ok=True)
+    with open(os.path.join(data_dir, 'train_graphs_all.pkl'), 'wb') as f:
         pickle.dump(train_graphs, f)
         print(len(train_graphs))
-    with open('../data/test_graphs_all.pkl', 'wb') as f:
+    with open(os.path.join(data_dir, 'test_graphs_all.pkl'), 'wb') as f:
         pickle.dump(test_graphs, f)
         print(len(test_graphs))
-    with open('../data/val_graphs_all.pkl', 'wb') as f:
+    with open(os.path.join(data_dir, 'val_graphs_all.pkl'), 'wb') as f:
         pickle.dump(val_graphs, f)
         print(len(val_graphs))
+
+if __name__ == '__main__':
+    main()
