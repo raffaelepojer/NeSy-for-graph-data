@@ -223,9 +223,9 @@ def write_rbn_layer_ACR(prob_name, current_layer, model_weights,
                 result += "\t$R_bias_{}_{}".format(current_layer, current_row) + "\n"
 
             if mlp:
-                result += "\tWITH sum\n\tFORALL;\n"
+                result += "\tWITH sum;\n"
             else:
-                result += "\tWITH l-reg\n\tFORALL;\n"
+                result += "\tWITH l-reg\n;\n"
 
             result += "\n"
         if mlp:
@@ -271,9 +271,9 @@ def write_rbn_layer_ACR(prob_name, current_layer, model_weights,
             result += "\t" + f"{R_bias[current_row].item():.30f}" + "\n"
 
         if mlp:
-            result += "\tWITH sum\n\tFORALL;\n"
+            result += "\tWITH sum;\n"
         else:
-            result += "\tWITH l-reg\n\tFORALL;\n"
+            result += "\tWITH l-reg;\n"
 
         result += "\n"
     
@@ -311,7 +311,7 @@ def write_mlp_layer_ACR(prob_name, current_layer, model):
             """ the last layer should not have the l-reg, since the MLP layer apply the activation function to the layers
             in between, it is kept because the last computation apply the sigmoid to the output of the MLP layer"""
             result += "\t" + f"{mlp_bias[current_mlp_row].item():.30f}" + "\n"
-            result += "\tWITH l-reg\n\tFORALL;\n"
+            result += "\tWITH l-reg;\n"
             result += "\n"
 
     return result
@@ -329,7 +329,7 @@ def write_final_graph_classifier_ACR(prob_name, model):
                 prob_name + "_read_" + str(len(model.layers)) + "_" + str(idx) + "()),\n"
         
         result += "\t" + f"{classifier_bias[current_row].item():.30f}" + "\n"
-        result += "\tWITH sum\n\tFORALL;\n"
+        result += "\tWITH sum;\n"
 
         result += "\n"
     return result
@@ -350,12 +350,12 @@ def write_final_node_formula_ACR(prob_name, model, mlp, write_param=False):
     #                 prob_name + "_layer_" + str(len(model.layers)) + "_" + str(idx) + "(v)),\n"
             
     #         result += "\t" + f"{classifier_bias[current_row].item():.30f}" + "\n"
-    #         result += "\tWITH l-reg\n\tFORALL;\n"
+    #         result += "\tWITH l-reg;\n"
     # else:
     #     result += prob_name + "([node]v)= COMBINE\n"
     #     for l in range(len(model.layers)):
     #         result += "\t(@" + prob_name + "_layer_" + str(l) + "_"  + "(v)),\n"
-    #     result += "\tWITH l-reg\n\tFORALL;\n"
+    #     result += "\tWITH l-reg;\n"
     # result += "\n"
 
 
@@ -369,7 +369,7 @@ def write_final_node_formula_ACR(prob_name, model, mlp, write_param=False):
                 result += "\t($final_classifier_{}_{}*@" \
                     .format(current_row, idx) + prob_name + "_layer_" + str(len(model.layers)) + "_" + str(idx) + "(v)),\n"
             result += "\t$final_classifier_bias_{}\n".format(current_row)
-            result += "\tWITH l-reg\n\tFORALL;\n"
+            result += "\tWITH l-reg;\n"
             result += "\n"
         return result
 
@@ -381,7 +381,7 @@ def write_final_node_formula_ACR(prob_name, model, mlp, write_param=False):
                 prob_name + "_layer_" + str(len(model.layers)) + "_" + str(idx) + "(v)),\n"
         
         result += "\t" + f"{classifier_bias[current_row].item():.30f}" + "\n"
-        result += "\tWITH l-reg\n\tFORALL;\n"
+        result += "\tWITH l-reg;\n"
 
         result += "\n"
     return result
@@ -399,5 +399,5 @@ def soft_max_out(prob_name, class_i):
     elif class_i == 1:
         result += "\t(@final_" + prob_name + \
             "_classifier_1() + @negative_0())\n"
-    result += "\tWITH l-reg\n\tFORALL;\n\n"
+    result += "\tWITH l-reg;\n\n"
     return result
